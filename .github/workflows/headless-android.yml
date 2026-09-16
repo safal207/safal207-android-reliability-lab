@@ -52,3 +52,55 @@ jobs:
           name: android-reliability-lab-debug-apk
           path: '**/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
+
+  runtime-proof:
+    needs: environment-proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download verified debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-reliability-lab-debug-apk
+          path: runtime-apk
+
+      - name: Enable KVM permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Launch app and capture runtime evidence
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            test -n "$(find runtime-apk -type f -name '*.apk' -print -quit)"
+            adb install -r "$(find runtime-apk -type f -name '*.apk' -print -quit)"
+            adb shell am start -W -n com.safal207.androidreliabilitylab/.MainActivity
+            adb shell pidof com.safal207.androidreliabilitylab
+            sleep 2
+            mkdir -p runtime-evidence
+            adb exec-out screencap -p > runtime-evidence/incident-list.png
+            test -s runtime-evidence/incident-list.png
+            adb shell uiautomator dump /sdcard/window.xml
+            adb pull /sdcard/window.xml runtime-evidence/window.xml
+            grep -q "Android Reliability Lab" runtime-evidence/window.xml
+            grep -q "INC-001" runtime-evidence/window.xml
+            grep -q "INC-003" runtime-evidence/window.xml
+
+      - name: Upload runtime proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reliability-lab-runtime-proof
+          path: runtime-evidence/
+          if-no-files-found: error
