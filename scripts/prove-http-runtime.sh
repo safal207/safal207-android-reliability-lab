@@ -6,7 +6,18 @@ mkdir -p "$evidence"
 python3 scripts/incident-fixture.py --requests "$evidence/fixture-requests.jsonl" \
   > "$evidence/fixture-server.log" 2>&1 &
 fixture_pid=$!
-trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
+finish() {
+  local result=$?
+  if [[ "$result" -ne 0 ]]; then
+    # Preserve failure evidence without replacing the original nonzero result.
+    adb logcat -d -t 1000 > "$evidence/failure-logcat.txt" 2>&1 || true
+    adb exec-out screencap -p > "$evidence/failure-screen.png" || true
+    adb shell dumpsys connectivity > "$evidence/failure-connectivity.txt" 2>&1 || true
+  fi
+  kill "$fixture_pid" 2>/dev/null || true
+  exit "$result"
+}
+trap finish EXIT
 for attempt in {1..30}; do
   kill -0 "$fixture_pid"
   if curl --fail --silent --max-time 1 http://127.0.0.1:8765/health > /dev/null; then
@@ -15,6 +26,20 @@ for attempt in {1..30}; do
   sleep 1
 done
 curl --fail --silent --max-time 1 http://127.0.0.1:8765/health > "$evidence/fixture-health.json"
+
+# Boot completion does not establish the guest-to-host network boundary.
+# Probe only /health, before launch: never issue or retry the app's /incidents.
+for attempt in {1..30}; do
+  if adb shell 'printf "GET /health HTTP/1.0\r\nHost: 10.0.2.2\r\n\r\n" | toybox nc -w 2 10.0.2.2 8765' \
+      > "$evidence/emulator-fixture-health.txt" 2>&1 && \
+      grep -q '200 OK' "$evidence/emulator-fixture-health.txt" && \
+      grep -q '"ready":true' "$evidence/emulator-fixture-health.txt"; then
+    break
+  fi
+  sleep 1
+done
+grep -q '200 OK' "$evidence/emulator-fixture-health.txt"
+grep -q '"ready":true' "$evidence/emulator-fixture-health.txt"
 
 mapfile -t apks < <(find runtime-apk -type f -name '*.apk')
 test "${#apks[@]}" -eq 1
