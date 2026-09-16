@@ -45,6 +45,14 @@ jobs:
             echo "::notice::This run proves SDK provisioning only; application build proof begins in Bead 001."
           fi
 
+      - name: Build additional Room instrumentation APK
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            android-reliability-lab-headless \
+            bash -lc './gradlew --no-daemon assembleDebugAndroidTest'
+
       - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,6 +72,13 @@ jobs:
           path: '**/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
 
+      - name: Upload Room instrumentation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reliability-lab-room-test-apk
+          path: app/build/outputs/apk/androidTest/debug/*.apk
+          if-no-files-found: error
+
   runtime-proof:
     needs: environment-proof
     runs-on: ubuntu-latest
@@ -78,6 +93,12 @@ jobs:
         with:
           name: android-reliability-lab-debug-apk
           path: runtime-apk
+
+      - name: Download Room instrumentation APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-reliability-lab-room-test-apk
+          path: instrumentation-apk
 
       - name: Enable KVM permissions
         run: |
@@ -94,7 +115,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash scripts/prove-http-runtime.sh
+          script: bash scripts/prove-room-runtime.sh
 
       - name: Upload runtime proof
         if: always()
