@@ -8,7 +8,7 @@ This repository is intentionally built as a sequence of small, independently ver
 
 ## Status
 
-**Bead 000 — Headless Android build environment:** implementation proposed; CI evidence is required before this bead is marked proven.
+**Bead 000 — Headless Android build environment:** SDK environment proof **PASS** in GitHub Actions. Docker provisioned the command-line Android toolchain and emitted JDK / `sdkmanager` / `adb` evidence. This does not yet claim an Android application build.
 
 **Bead 001 — Thin vertical slice:** project boundary defined. Android application implementation is next.
 
@@ -121,7 +121,7 @@ It is a compact, inspectable proof of Android implementation plus QA/reliability
 
 ## Beads
 
-- [ ] **000 — Headless environment:** JDK + Android SDK + Docker + CI without Android Studio
+- [x] **000 — Headless environment:** JDK + Android SDK + Docker + CI without Android Studio
 - [ ] **001 — Thin vertical slice:** Compose app + one incident-list screen using deterministic fake data
 - [ ] **002 — API boundary:** replace fake source with a small HTTP API and explicit loading/error states
 - [ ] **003 — Persistence:** cache incidents locally with Room
