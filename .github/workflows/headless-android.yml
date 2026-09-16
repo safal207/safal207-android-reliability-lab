@@ -1,0 +1,54 @@
+name: Headless Android
+
+on:
+  push:
+    branches:
+      - main
+      - 'bead-*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  environment-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build reproducible Android image
+        run: docker build --pull -t android-reliability-lab-headless .
+
+      - name: Emit SDK environment evidence
+        run: |
+          docker run --rm android-reliability-lab-headless bash -lc '
+            set -euo pipefail
+            java -version 2>&1
+            printf "sdkmanager: "
+            sdkmanager --version
+            adb --version | head -n 2
+          '
+
+      - name: Verify application when Gradle wrapper exists
+        shell: bash
+        run: |
+          if [[ -f ./gradlew ]]; then
+            chmod +x ./gradlew
+            docker run --rm \
+              -v "$PWD:/workspace" \
+              -w /workspace \
+              android-reliability-lab-headless \
+              bash -lc 'bootstrap-android'
+          else
+            echo "::notice::No Gradle wrapper exists yet."
+            echo "::notice::This run proves SDK provisioning only; application build proof begins in Bead 001."
+          fi
+
+      - name: Upload debug APK when produced
+        if: ${{ hashFiles('gradlew') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reliability-lab-debug-apk
+          path: '**/build/outputs/apk/debug/*.apk'
+          if-no-files-found: error
