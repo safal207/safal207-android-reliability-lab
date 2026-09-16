@@ -20,12 +20,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safal207.androidreliabilitylab.domain.Incident
 
 @Composable
 fun IncidentListScreen(
-    viewModel: IncidentListViewModel = viewModel(),
+    viewModel: IncidentListViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -48,6 +47,11 @@ fun IncidentListScreen(
                 )
 
                 is IncidentUiState.Content -> IncidentList(state.incidents)
+                is IncidentUiState.Error -> Text(
+                    text = state.message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
             }
         }
     }

@@ -1,0 +1,5 @@
+[
+  {"id": "INC-API-001", "title": "HTTP boundary received", "status": "OPEN"},
+  {"id": "INC-API-002", "title": "DTO mapping checked", "status": "INVESTIGATING"},
+  {"id": "INC-API-003", "title": "API content rendered", "status": "RESOLVED"}
+]
