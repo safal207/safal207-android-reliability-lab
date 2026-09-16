@@ -31,7 +31,7 @@ Build the reproducible environment:
 docker build -t android-reliability-lab-headless .
 ```
 
-Verify the application once a Gradle wrapper exists:
+Verify the application:
 
 ```bash
 bash scripts/bootstrap-android.sh
@@ -47,7 +47,8 @@ If the project later needs additional verification, add it explicitly rather tha
 
 ## Current sequence
 
-- **Bead 000:** prove the Android command-line environment can be provisioned without Android Studio.
-- **Bead 001:** create the smallest runnable Compose vertical slice and produce the first real application build proof.
+- **Bead 000 — complete:** Android command-line environment can be provisioned without Android Studio.
+- **Bead 001 — complete:** runnable Compose vertical slice builds, tests, lints, installs, launches and leaves runtime evidence in CI.
+- **Bead 002 — active:** GitHub Issue #5 introduces the REST API boundary and explicit `Loading` / `Content` / `Error` states. The app must fetch deterministic HTTP data at runtime while later persistence/retry/recovery beads remain out of scope.
 
-An emulator is not required for Bead 000. Runtime/device evidence starts only when a later bead explicitly asks for it.
+For Bead 002, read Issue #5 before editing. A source-only implementation is not completion: the HTTP boundary must be independently proven by the fixed build checks, deterministic HTTP tests, and runtime fixture evidence.
