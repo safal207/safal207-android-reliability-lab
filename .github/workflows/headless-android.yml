@@ -84,10 +84,8 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -eu
-            APK="$(find runtime-apk -type f -name '*.apk' | head -n 1)"
-            test -n "$APK"
-            adb install -r "$APK"
+            test -n "$(find runtime-apk -type f -name '*.apk' -print -quit)"
+            adb install -r "$(find runtime-apk -type f -name '*.apk' -print -quit)"
             adb shell am start -W -n com.safal207.androidreliabilitylab/.MainActivity
             adb shell pidof com.safal207.androidreliabilitylab
             sleep 2
