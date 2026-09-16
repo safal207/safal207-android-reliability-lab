@@ -35,23 +35,16 @@ jobs:
         run: |
           if [[ -f ./gradlew ]]; then
             chmod +x ./gradlew
+            # Keep both APK builds in one container so they share the debug signing key.
             docker run --rm \
               -v "$PWD:/workspace" \
               -w /workspace \
               android-reliability-lab-headless \
-              bash -lc 'bootstrap-android'
+              bash -lc 'bootstrap-android && ./gradlew --no-daemon assembleDebugAndroidTest'
           else
             echo "::notice::No Gradle wrapper exists yet."
             echo "::notice::This run proves SDK provisioning only; application build proof begins in Bead 001."
           fi
-
-      - name: Build additional Room instrumentation APK
-        run: |
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -w /workspace \
-            android-reliability-lab-headless \
-            bash -lc './gradlew --no-daemon assembleDebugAndroidTest'
 
       - name: Upload verification reports
         if: always()
