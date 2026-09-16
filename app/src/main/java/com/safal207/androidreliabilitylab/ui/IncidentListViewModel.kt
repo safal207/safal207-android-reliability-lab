@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import java.util.logging.Level
+import java.util.logging.Logger
 
 sealed interface IncidentUiState {
     data object Loading : IncidentUiState
@@ -31,7 +33,9 @@ class IncidentListViewModel(
                 IncidentUiState.Content(repository.getIncidents())
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
+            } catch (failure: Exception) {
+                Logger.getLogger(IncidentListViewModel::class.java.name)
+                    .log(Level.WARNING, "Incident fetch failed", failure)
                 IncidentUiState.Error("Unable to load incidents.")
             }
         }
