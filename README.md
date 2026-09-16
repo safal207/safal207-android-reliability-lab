@@ -8,15 +8,17 @@ This repository is intentionally built as a sequence of small, independently ver
 
 ## Status
 
-**Bead 000 — Headless Android build environment:** SDK environment proof **PASS** in GitHub Actions. Docker provisioned the command-line Android toolchain and emitted JDK / `sdkmanager` / `adb` evidence. This does not yet claim an Android application build.
+**Bead 000 — Headless Android environment:** **PASS.** A clean GitHub Actions runner provisions JDK + Android command-line tooling without Android Studio and proves the SDK/toolchain boundary.
 
-**Bead 001 — Thin vertical slice:** project boundary defined. Android application implementation is next.
+**Bead 001 — Thin vertical slice:** **PASS.** The Kotlin/Compose application passes `test`, `lint`, and `assembleDebug`; CI produces a debug APK, boots an Android API 35 emulator, installs and cold-launches the app, observes the live process, captures a screenshot, and matches the deterministic incident UI through the Android UI hierarchy. Proof was produced on commit `93d08feec4f1e04cfe97ee734af261af00157cad` and merged through PR #4.
+
+**Bead 002 — API boundary:** **ACTIVE in Issue #5.** The next proof replaces the app's default fake source with a deterministic HTTP-backed repository and adds explicit `Loading`, `Content`, and `Error` states. No API-boundary claim is made until that issue's tests and runtime fixture evidence pass.
 
 ## Build philosophy
 
 Android Studio is optional convenience tooling, not part of the build trust boundary.
 
-The target development path is:
+The development path is:
 
 ```text
 Codex / developer
@@ -28,7 +30,11 @@ Headless Android toolchain
       ↓
 test + lint + assembleDebug
       ↓
-APK / test evidence / CI receipt
+APK
+      ↓
+headless Android emulator
+      ↓
+runtime screenshot / UI evidence / CI receipt
 ```
 
 The repository includes a Dockerfile and command-line bootstrap so the Android environment can be created without Android Studio.
@@ -45,7 +51,7 @@ Reproducible container:
 docker build -t android-reliability-lab-headless .
 ```
 
-Once Bead 001 adds the Gradle Android project, full verification becomes:
+Full application verification:
 
 ```bash
 bash scripts/bootstrap-android.sh
@@ -57,11 +63,11 @@ which is required to execute:
 ./gradlew --no-daemon test lint assembleDebug
 ```
 
-Until a Gradle wrapper and Android project exist, a passing SDK bootstrap is **not** an application build proof.
+A green build is not automatically a runtime claim. Runtime/device behaviour is claimed only when the emulator/device evidence is also produced.
 
 ## Product scenario
 
-The app will model a small incident/task workflow:
+The app models a small incident/task workflow:
 
 1. Load a list of incidents from an API.
 2. Open an incident.
@@ -97,7 +103,7 @@ The lab will progressively prove behaviour for:
 - Compose UI tests
 - GitHub Actions
 
-The exact dependency set will be introduced only when a bead needs it.
+The exact dependency set is introduced only when a bead needs it.
 
 ## Evidence model
 
@@ -122,8 +128,8 @@ It is a compact, inspectable proof of Android implementation plus QA/reliability
 ## Beads
 
 - [x] **000 — Headless environment:** JDK + Android SDK + Docker + CI without Android Studio
-- [ ] **001 — Thin vertical slice:** Compose app + one incident-list screen using deterministic fake data
-- [ ] **002 — API boundary:** replace fake source with a small HTTP API and explicit loading/error states
+- [x] **001 — Thin vertical slice:** Compose app + deterministic incident-list screen + build/runtime evidence
+- [ ] **002 — API boundary:** HTTP-backed incident source + explicit `Loading` / `Content` / `Error` states — Issue #5
 - [ ] **003 — Persistence:** cache incidents locally with Room
 - [ ] **004 — Offline mutation:** queue a state change when connectivity is unavailable
 - [ ] **005 — Retry safety:** retry without creating duplicate logical effects
@@ -133,4 +139,4 @@ It is a compact, inspectable proof of Android implementation plus QA/reliability
 
 ## Claim ceiling
 
-Until the corresponding evidence is committed, this repository claims only what can be independently inspected in its current state.
+The repository currently proves only the completed beads above. Bead 002 does **not** yet prove HTTP/API behaviour. Persistence, offline behaviour, retry safety, idempotency, and recovery also remain unproven until their own executable evidence exists.
