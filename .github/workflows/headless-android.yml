@@ -45,6 +45,17 @@ jobs:
             echo "::notice::This run proves SDK provisioning only; application build proof begins in Bead 001."
           fi
 
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reliability-lab-verification-reports
+          path: |
+            app/build/test-results/
+            app/build/reports/tests/
+            app/build/reports/lint-results*
+          if-no-files-found: error
+
       - name: Upload debug APK when produced
         if: ${{ hashFiles('gradlew') != '' }}
         uses: actions/upload-artifact@v4
@@ -83,22 +94,10 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            test -n "$(find runtime-apk -type f -name '*.apk' -print -quit)"
-            adb install -r "$(find runtime-apk -type f -name '*.apk' -print -quit)"
-            adb shell am start -W -n com.safal207.androidreliabilitylab/.MainActivity
-            adb shell pidof com.safal207.androidreliabilitylab
-            sleep 2
-            mkdir -p runtime-evidence
-            adb exec-out screencap -p > runtime-evidence/incident-list.png
-            test -s runtime-evidence/incident-list.png
-            adb shell uiautomator dump /sdcard/window.xml
-            adb pull /sdcard/window.xml runtime-evidence/window.xml
-            grep -q "Android Reliability Lab" runtime-evidence/window.xml
-            grep -q "INC-001" runtime-evidence/window.xml
-            grep -q "INC-003" runtime-evidence/window.xml
+          script: bash scripts/prove-http-runtime.sh
 
       - name: Upload runtime proof
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-reliability-lab-runtime-proof
