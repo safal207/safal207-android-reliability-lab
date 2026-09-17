@@ -19,13 +19,15 @@ class HttpIncidentRepository internal constructor(
         api.getIncidents().map(IncidentDto::toDomain)
 
     companion object {
-        fun create(baseUrl: String): HttpIncidentRepository {
-            val client = OkHttpClient.Builder()
+        fun create(
+            baseUrl: String,
+            client: OkHttpClient = OkHttpClient.Builder()
                 .retryOnConnectionFailure(false)
                 .followRedirects(false)
                 .followSslRedirects(false)
                 .callTimeout(10, TimeUnit.SECONDS)
-                .build()
+                .build(),
+        ): HttpIncidentRepository {
             val api = Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(client)
