@@ -11,7 +11,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody
+import okio.BufferedSink
 
 enum class MutationDelivery { CONFIRMED, TRANSPORT_FAILURE }
 
@@ -34,8 +35,14 @@ class HttpIncidentMutationSource(
         withContext(Dispatchers.IO) {
             val url = origin.newBuilder().addPathSegment("incidents")
                 .addPathSegment(incidentId).addPathSegment("status").build()
-            val body = Gson().toJson(StatusChangeDto(status.name))
-                .toRequestBody("application/json; charset=utf-8".toMediaType())
+            val bytes = Gson().toJson(StatusChangeDto(status.name)).toByteArray()
+            val body = object : RequestBody() {
+                override fun contentType() = "application/json; charset=utf-8".toMediaType()
+                override fun contentLength() = bytes.size.toLong()
+                override fun writeTo(sink: BufferedSink) { sink.write(bytes) }
+                // Also prohibit HTTP follow-up retransmission (e.g. 503 Retry-After: 0).
+                override fun isOneShot() = true
+            }
             val request = Request.Builder().url(url).put(body).build()
             // Only failure to obtain an HTTP response is queueable. Do not parse a
             // response body here: an HTTP error or malformed payload is not offline.

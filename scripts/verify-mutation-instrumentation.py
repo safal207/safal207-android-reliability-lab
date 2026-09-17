@@ -17,6 +17,7 @@ EXPECTED = {
     "pendingIntentSurvivesCloseAndFreshReopen",
     "http500MutationIsErrorWithoutQueueOrLocalChange",
     "http400MutationIsErrorWithoutQueueOrLocalChange",
+    "http503RetryAfterZeroDoesNotReplayMutation",
     "failedPendingWriteRollsBackWithoutPublishingPending",
     "versionOneMigrationPreservesIncidentRows",
 }
@@ -39,8 +40,8 @@ def verify(output):
             status = {}
     if Counter(completed) != Counter(EXPECTED):
         raise ValueError(f"Missing/duplicate/extra mutation tests: {completed}")
-    if not re.search(r"^OK \(7 tests\)\s*$", output, re.MULTILINE):
-        raise ValueError("Missing successful seven-test summary")
+    if not re.search(r"^OK \(8 tests\)\s*$", output, re.MULTILINE):
+        raise ValueError("Missing successful eight-test summary")
     if not re.search(r"^INSTRUMENTATION_CODE: -1\s*$", output, re.MULTILINE):
         raise ValueError("Missing runner completion")
     return sorted(completed)
@@ -59,7 +60,7 @@ def main():
         "test_class": TEST_CLASS, "passed": passed, "failed": [], "skipped": [],
         "runner_output_sha256": hashlib.sha256(output).hexdigest(),
         "test_apk_sha256": hashlib.sha256(args.test_apk.read_bytes()).hexdigest(),
-        "claim_ceiling": "Online success, transport-only durable queueing, close/reopen, HTTP 400/500 error, atomic write failure, additive v1-v2 migration; bounded no-replay observation only.",
+        "claim_ceiling": "Online success, transport-only durable queueing, close/reopen, HTTP 400/500/503 error without retransmission, atomic write failure, additive v1-v2 migration; bounded no-replay observation only.",
     }
     (args.directory / "mutation-instrumentation-results.json").write_text(json.dumps(receipt, indent=2) + "\n")
     print(json.dumps(receipt, indent=2))

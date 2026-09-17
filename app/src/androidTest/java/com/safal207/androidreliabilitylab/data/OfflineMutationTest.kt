@@ -156,6 +156,11 @@ class OfflineMutationTest {
     }
 
     @Test
+    fun http503RetryAfterZeroDoesNotReplayMutation() = runTest(dispatcher) {
+        assertHttpError(503)
+    }
+
+    @Test
     fun failedPendingWriteRollsBackWithoutPublishingPending() = runTest(dispatcher) {
         val viewModel = loadedViewModel()
         withContext(Dispatchers.IO) {
@@ -195,7 +200,9 @@ class OfflineMutationTest {
 
     private suspend fun TestScope.assertHttpError(code: Int) {
         val viewModel = loadedViewModel()
-        server.enqueue(MockResponse().setResponseCode(code).setBody("server rejected mutation"))
+        server.enqueue(MockResponse().setResponseCode(code).setHeader("Retry-After", "0")
+            .setBody("server rejected mutation"))
+        server.enqueue(MockResponse().setResponseCode(204))
         assertMutationStates(viewModel, IncidentMutationUiState.Error)
         assertEquals(IncidentUiState.Content(expected), viewModel.uiState.value)
         assertEquals(expected, readRows())
