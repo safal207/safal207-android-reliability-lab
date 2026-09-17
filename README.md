@@ -16,7 +16,9 @@ This repository is intentionally built as a sequence of small, independently ver
 
 **Bead 003 — Room persistence boundary:** **PASS on proof commit `4f154d9138c83f863b5fd822a3e27f4960c926d4`; independently verified and merged through [PR #8](https://github.com/safal207/safal207-android-reliability-lab/pull/8).** Successful HTTP data is written to Room before `Content`. File-backed close/reopen, deterministic replacement, HTTP failure without cached fallback, and failed-write rollback passed on API 35. Runtime database rows were independently inspected with host SQLite.
 
-**Bead 004 — Offline mutation queue boundary:** **CI PASS on proof commit `e3005305d007e515592fdac1bd93e783640245a0`; independent QA pending in [PR #10](https://github.com/safal207/safal207-android-reliability-lab/pull/10).** One loaded incident's state-change intent is durably queued after a transport failure and visibly marked pending. Online confirmation, pending close/reopen, HTTP error handling, atomic rollback and bounded absence of replay are proven below. [Issue #9](https://github.com/safal207/safal207-android-reliability-lab/issues/9) remains open; the PR is not merged.
+**Bead 004 — Offline mutation queue boundary:** **PASS on proof commit `e3005305d007e515592fdac1bd93e783640245a0`; independently verified and merged through [PR #10](https://github.com/safal207/safal207-android-reliability-lab/pull/10).** One loaded incident's state-change intent is durably queued after a transport failure and visibly marked pending. Online confirmation, pending close/reopen, HTTP error handling, atomic rollback and bounded absence of replay are proven below. [Issue #9](https://github.com/safal207/safal207-android-reliability-lab/issues/9) was closed after independent QA.
+
+**Bead 005 — Retry safety:** **CI PASS on proof commit `69313ed2993025513f160c37d5c76e9acd2be493`; independent QA pending in [PR #12](https://github.com/safal207/safal207-android-reliability-lab/pull/12).** One stable action identity is created before the first PUT and reused by explicit replay. The fixture durably records one effect/receipt before dropping the first response; explicit replay returns that receipt without another effect. Room commits the matching receipt and pending deletion before confirmation. [Issue #11](https://github.com/safal207/safal207-android-reliability-lab/issues/11) remains open and the PR is not merged.
 
 ## Build philosophy
 
@@ -135,8 +137,8 @@ It is a compact, inspectable proof of Android implementation plus QA/reliability
 - [x] **001 — Thin vertical slice:** Compose app + deterministic incident-list screen + build/runtime evidence
 - [x] **002 — API boundary:** HTTP-backed source + DTO mapping + `Loading` / `Content` / `Error`; proof below, merged through [PR #6](https://github.com/safal207/safal207-android-reliability-lab/pull/6)
 - [x] **003 — Persistence:** HTTP data persisted in Room; proof below, merged through [PR #8](https://github.com/safal207/safal207-android-reliability-lab/pull/8)
-- [ ] **004 — Offline mutation:** durable pending intent after transport failure; CI proof below, independent QA pending in [PR #10](https://github.com/safal207/safal207-android-reliability-lab/pull/10)
-- [ ] **005 — Retry safety:** retry without creating duplicate logical effects
+- [x] **004 — Offline mutation:** durable pending intent after transport failure; independently verified and merged through [PR #10](https://github.com/safal207/safal207-android-reliability-lab/pull/10)
+- [ ] **005 — Retry safety:** stable identity, explicit replay, fixture duplicate-effect suppression and durable matching receipt; CI proof below, independent QA pending in [PR #12](https://github.com/safal207/safal207-android-reliability-lab/pull/12)
 - [ ] **006 — Interrupted-session recovery:** resume pending work after app/process restart
 - [ ] **007 — Verification:** unit/UI tests + CI evidence
 - [ ] **008 — Portfolio package:** screenshots, architecture diagram, reproducible demo steps, APK artifact
@@ -248,8 +250,8 @@ Proof commit: `e3005305d007e515592fdac1bd93e783640245a0`. [Actions run 351873821
 
 - Fixed `./gradlew --no-daemon test lint assembleDebug` — **PASS**. Existing JVM tests: 3 per variant, 6 executions, no failures/errors/skips. Lint: 0 errors, 9 warnings. Additional `assembleDebugAndroidTest` — **PASS**; both APKs share the container's signing key.
 - Original five Bead 003 Room tests — **5 passed**, unchanged. New mutation tests — **8 passed**, no failures/skips. The runtime executes all prior HTTP/UI/process/Room gates before the separate mutation scenario.
-- Room schema 1→2 adds only `pending_mutations`. An explicit migration test preserves the old incidents. The original snapshot validator strictly expects version 2 and also requires zero pending rows before any mutation; all original integrity/fixture checks remain.
-- Mutation bodies are one-shot, with connection retries and redirects disabled. HTTP 400/500 and `503 Retry-After: 0` remain errors without queueing or HTTP retransmission. The locally generated mutation id never leaves the local queue.
+- Room schema 1→2 adds only `pending_mutations`. An explicit migration test preserves the old incidents. At that proof commit, the original snapshot validator strictly expected version 2 and also required zero pending rows before any mutation; all original integrity/fixture checks remain.
+- Mutation bodies are one-shot, with connection retries and redirects disabled. HTTP 400/500 and `503 Retry-After: 0` remain errors without queueing or HTTP retransmission. At that proof commit, the locally generated mutation id never left the local queue; Bead 005 introduces a pre-request identity sent on the wire.
 
 Test class: `com.safal207.androidreliabilitylab.data.OfflineMutationTest`.
 
@@ -302,7 +304,7 @@ The runtime archive retains the original HTTP/Room evidence at its root. The sep
 | `pending-incident.png` | `c35cc13a20a12d92d9e9f94baf4dc8265acb46964bfe4827c688aa38b7b00935` |
 | `pending-window.xml` | `a3a184a58bdd85073ec3470d0385d07e15747cfd905440f92fc828a522be8172` |
 
-All four downloaded artifact hashes and receipt/file bindings were verified, both original and pending SQLite snapshots were queried independently again, and the pending screenshot was inspected. PR #10 awaits independent QA; Issue #9 remains open.
+All four downloaded artifact hashes and receipt/file bindings were verified, both original and pending SQLite snapshots were queried independently again, and the pending screenshot was inspected. Independent QA subsequently completed; PR #10 was merged and Issue #9 was closed.
 
 ### Reproduce the mutation proof
 
@@ -314,8 +316,94 @@ bash scripts/prove-offline-mutation-runtime.sh
 
 The script preserves all prior gates, triggers one UI action, observes the bounded interval and retains raw evidence. It does not clear an existing queue or replay it. Startup still requires a successful HTTP load; pending intents are not drained or reconciled in this bead.
 
+## Bead 005 receipts
+
+Proof commit: `69313ed2993025513f160c37d5c76e9acd2be493`. [Actions run 35195398590](https://github.com/safal207/safal207-android-reliability-lab/actions/runs/35195398590), attempt 1, passed `environment-proof` and `runtime-proof`. The [PR run 35195440317](https://github.com/safal207/safal207-android-reliability-lab/actions/runs/35195440317) also passed. These receipts identify the tested code commit; this README update follows the inspected proof. Independent QA owns acceptance of [Issue #11](https://github.com/safal207/safal207-android-reliability-lab/issues/11) and [PR #12](https://github.com/safal207/safal207-android-reliability-lab/pull/12).
+
+- Fixed `./gradlew --no-daemon test lint assembleDebug` — **PASS**: 3 JVM tests per variant, 6 executions, no failures/errors/skips; lint 0 errors, 9 warnings. Additional `assembleDebugAndroidTest` — **PASS**.
+- API 35 instrumentation: **5 Room + 8 offline-mutation + 8 retry-safety tests passed**, with zero failures/skips. The original JVM/Room test sources and strict five/eight-test result validators remain intact. Bead 004 scenarios retain their assertions; successful 204/no-key protocol expectations are upgraded to matching receipt/stable-header assertions. HTTP 400/500/503 error, one-shot HTTP bodies, rollback and bounded no-replay gates remain.
+- The actual Python runtime fixture has **3 passing HTTP tests**, including durable receipt reuse after fixture reopen, payload conflict, and preservation of Bead 004's pre-effect disconnect. This fixture reopen test is not Android process-recovery evidence.
+- Room schema 2→3 adds only `mutation_receipts`. Migration tests preserve v1 incidents through 1→2→3 and v2 pending rows through 2→3. The historic `pending_mutations.mutationId` column now stores the same `actionId` sent in `Idempotency-Key`; old rows are preserved without startup replay.
+
+Test class: `com.safal207.androidreliabilitylab.data.RetrySafetyTest`.
+
+| Vector | Passing test |
+|---|---|
+| A: identity exists before first PUT; one effect and durable matching receipt | `vectorAOnlineSuccessStoresMatchingReceipt` |
+| B: effect committed, response lost; same identity remains pending | `vectorBAppliedThenLostResponseKeepsSamePendingIdentity` |
+| C: one manual replay; same identity/payload/receipt, two attempts, one effect | `vectorCExplicitReplayReturnsSameReceiptWithoutSecondEffect` |
+| D: same identity, different payload; HTTP 409 without local/server corruption | `vectorDSameIdentityDifferentPayloadIs409WithoutCorruption` |
+| E: wrong action, incident or target receipt; pending retained, no confirmation | `vectorEMismatchedReceiptNeverClearsPendingOrConfirms` |
+| F: abort after receipt INSERT and pending DELETE; both roll back, pending survives reopen | `vectorFFailedReceiptTransactionRollsBackAndRetainsDurablePending` |
+| G: matching receipt and no pending after file-backed close/fresh reopen | `vectorGReceiptSurvivesFileBackedCloseAndFreshReopen` |
+| Additive v2→v3 migration without replay | `versionTwoMigrationPreservesPendingWithoutReplay` |
+
+| Artifact | ID | Archive SHA-256 |
+|---|---|---|
+| [Debug APK](https://github.com/safal207/safal207-android-reliability-lab/actions/runs/35195398590/artifacts/10486021619) | `10486021619` | `8a08efb688406e273abc74310f44d02d1e93b0c0bf50260b4183db1c6ff69c5a` |
+| [Instrumentation APK](https://github.com/safal207/safal207-android-reliability-lab/actions/runs/35195398590/artifacts/10485867337) | `10485867337` | `6d3feb284f04b3d739f0afecb7a7c2962a310956c395370ad670df5baffd0250` |
+| [Runtime proof](https://github.com/safal207/safal207-android-reliability-lab/actions/runs/35195398590/artifacts/10485019898) | `10485019898` | `61b924bcba8e1d63a942bae2cd2e1a0b7d9bd36826ba9b3e90b230507a673bb2` |
+| [JVM/lint reports](https://github.com/safal207/safal207-android-reliability-lab/actions/runs/35195398590/artifacts/10486046309) | `10486046309` | `9e54f42835cb4374c6a0547fc1f0df1818a4e6d8caac79caceb819531def628e` |
+
+APK file SHA-256: `7315d0c3027df56818a429643849f324a9053b890fc41cf08247e61b9c9c311d`. Test APK file SHA-256: `da74d7e9c9317fd2d6333ea31b7ab6db51242614255963b8d2f5e5c6fa5565fb`. Downloaded archives matched all four GitHub digests. Artifacts currently expire on 2026-12-16.
+
+### Explicit replay runtime evidence
+
+The archive retains all prior HTTP/Room and `offline-mutation/` evidence. New evidence is under `retry-safety/`. After all previous gates pass, the script explicitly clears the disposable emulator app's data to isolate this new scenario; the earlier snapshots and receipts remain unchanged. This is test setup, not a production reset or recovery path.
+
+1. Cold launch loads the same deterministic HTTP fixture. App PID `4585` stays unchanged through Pending and confirmation.
+2. One visible **Resolve incident** tap sends `PUT /incidents/INC-API-001/status`, body `{"status":"RESOLVED"}`, with `Idempotency-Key: 9a28aa91-76e9-4567-a8a7-3ce51bf0b507` at `2026-09-17T07:44:12.046580+00:00`.
+3. The fixture commits incident state, one effect, its receipt and the attempt to an independent SQLite ledger (`synchronous=FULL`, rollback journal). It fsyncs the request log, then disconnects before sending the response.
+4. The UI shows **Pending synchronization** and **Retry pending change**. Independent host SQLite inspection finds pending=1, receipts=0, the same action identity and expected incident fields. Two consecutive DB/WAL/SHM snapshots are byte-identical while the app remains alive and idle; no force-stop/relaunch occurs at this boundary.
+5. With the fixture ready to return its stored receipt, no replay occurs during **5.052817450 seconds**, from `2026-09-17T07:44:14.279348+00:00` to `2026-09-17T07:44:19.332142+00:00`. Attempts remain 1 and effects remain 1.
+6. One visible **Retry pending change** tap sends the same identity and payload at `2026-09-17T07:44:20.171138+00:00`. The fixture returns HTTP 200 and the original receipt. Independent ledger rows prove **attempts=2, logical effects=1, same action=true, same receipt=true**.
+7. UI becomes **Resolved on server** after the local receipt transaction commits. Only then is the app force-stopped for a quiescent final snapshot: pending=0, exactly one matching receipt, incident `INC-API-001` RESOLVED, other incidents unchanged. SQLite integrity is `ok`, schema version 3, Room identity `4221b15cdadae644c12bf27e13268675`.
+
+| Stable receipt field | Value |
+|---|---|
+| actionId | `9a28aa91-76e9-4567-a8a7-3ce51bf0b507` |
+| incidentId / targetStatus | `INC-API-001` / `RESOLVED` |
+| effectId | `effect-1` |
+| receiptVersion / effectSequence | `1` / `1` |
+| Canonical payload SHA-256 | `ee4a9a505754294e4808c7af16c1ff26a6818a2ef107ff1c9c98b41e2caa9853` |
+| Canonical receipt SHA-256 | `7d32f5b4a80ce7a26122204a596c9ae3647047976d871cede8d4cc2fe87ffc0b` |
+
+Canonical hashes use UTF-8 JSON with sorted keys and compact separators. The first ledger receipt, replay response receipt and durable local receipt match in every field. `fixture-ledger.sqlite` contains independently inspectable `attempts`, `effects` and `incident_state` tables; effect count is not inferred from the local UI or pending rows.
+
+| Evidence under `retry-safety/` | SHA-256 |
+|---|---|
+| `first-request.jsonl` | `d144b9e124ea311680eb0c9f55acc94347f0e735922a468e3b2d50a566c2a47f` |
+| `mutation-requests.jsonl` | `52f4d9dd473964536bf2670c5665312f555e5d691cecb50fff54e96f77317a1f` |
+| `pending-fixture-ledger.sqlite` | `6df5ada8c9a855b0c370dcd6bb334b8097891373a273c3be49e1bc390e15c375` |
+| `fixture-ledger.sqlite` | `660d421ea5633e7f6b01548b528e7aa47ef76e63e9aee781e2a617af818d6546` |
+| `fixture-rows.json` | `ea57483696aca3296e94ca0e660a7893436033b2c044398a60b5da26e0ecb43f` |
+| `pending-database.tar` | `c23f9b3444264ee0df9db080db985be6d96dae4bb493fb73c8c1264a07306bec` |
+| `confirmed-database.tar` | `082db5fc877a95b8266ac2bcf7a4b195d5f8cdcd30fa89d7cab05b7ffc0742ac` |
+| `pending-rows.json` | `50a2a72be4267060183458e1848a9270787230384cc6dd0ceab28e9bee396722` |
+| `confirmed-rows.json` | `25f4bb6720b792697a41a554b7e026a67447e58acbffea3a5e94f81a81239173` |
+| `pending-incident.png` | `055df2064c6b30933a906d4a51ef92c3ef4fd2299ed2a0ff69de2ac770b7e022` |
+| `pending-window.xml` | `8907ce0f11b4bbcf803f498bc8f416edd8d55d93a2a2cc121de38e110fce1d98` |
+| `confirmed-incident.png` | `a00f211c2a3c605c02ca8a6713d6d71be92c81fcb7e8757a02f772227fadc707` |
+| `confirmed-window.xml` | `cca3e09c45f1be3a84bcec07fdb6b39b4562bfbc98912445c5f4966c3671c207` |
+| `retry-instrumentation.txt` | `1e295c5a01d20e8b7c9d7997d5461d8cd0e60ab4afa7779c50e75bc84991ebfa` |
+
+`retry-receipt.json` binds the proof SHA/run/attempt, APK, requests, receipt identity/hash, before/after snapshots, extracted rows, screenshots/hierarchies and all prior gate receipts. `pending-proof.json` includes raw DB/WAL/SHM hashes and the live snapshot boundary. `retry-instrumentation-results.json` binds the eight named results to the test APK and raw runner output. Downloaded file bindings were checked, raw Room snapshots and the fixture ledger were independently queried again with host SQLite, and both screenshots were inspected.
+
+### Reproduce the retry-safety proof
+
+Build and copy both APKs as in the Room proof, using the same signing key. Start a fresh, disposable API 35 emulator (the preserved initial gates require an empty pending queue), then run:
+
+```bash
+python3 scripts/test-mutation-fixture.py
+bash scripts/prove-retry-safety-runtime.sh
+```
+
+This runs every Bead 001–004 runtime gate and their 13 instrumentation tests before the isolated Bead 005 scenario and eight new tests. Missing/skipped/failed tests, a third mutation request, a second effect, changed identity/payload/receipt, mismatched database rows or failed earlier checks fail CI. The app has no scheduler or startup replay path; each replay requires the visible button or an explicit test call.
+
 ## Claim ceiling
 
-The repository claims evidence only on the cited proof commits. Beads 001–003 establish the existing build, HTTP, UI and persistence boundaries. Bead 004 establishes one durable pending local intent after a deterministic transport failure, distinct server-confirmed/pending/error states, atomic queue-write rollback, database close/reopen, the additive Room 1→2 migration, and the stated no-replay observation. HTTP error states are instrumented; their rendered error screens are not emulator-UI-proven.
+The repository claims evidence only on the cited proof commits. Beads 001–003 establish the existing build, HTTP, UI and persistence boundaries. Bead 004 establishes durable pending intent after its deterministic pre-effect transport failure, atomic queue rollback, database close/reopen and bounded absence of replay. Those historical receipts retain their original scope.
 
-Automatic replay, retry/backoff, WorkManager/background execution, server idempotency, duplicate-effect safety, process-death recovery, conflict/freshness handling, offline startup fallback, further migrations, authentication and production-backend behaviour remain outside this proof. A transport failure alone does not establish whether a real remote server applied an operation; this fixture's no-effect outcome does not establish duplicate-effect safety.
+Bead 005 establishes one stable action identity/payload, explicit replay after an applied effect and lost response, duplicate-effect suppression by the deterministic fixture, and a matching durable local receipt before confirmation. It also checks payload conflict, mismatched receipts, receipt-transaction rollback and file-backed receipt close/reopen. HTTP/receipt error states are instrumented; their rendered error screens are not emulator-UI-proven. Independent QA has not yet accepted Bead 005.
+
+This does not establish automatic retry/backoff, WorkManager/background execution, reconnect drains, queue-wide replay, Android process-death/startup recovery, concurrent conflict/version handling, cross-device deduplication, offline startup fallback, authentication or production-backend idempotency/exactly-once guarantees. Database reopen is not process recovery, and a bounded no-replay observation is not an unlimited guarantee.
