@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,12 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.safal207.androidreliabilitylab.domain.Incident
+import com.safal207.androidreliabilitylab.domain.IncidentStatus
 
 @Composable
 fun IncidentListScreen(
     viewModel: IncidentListViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val mutationState by viewModel.mutationState.collectAsState()
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -46,7 +49,9 @@ fun IncidentListScreen(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
 
-                is IncidentUiState.Content -> IncidentList(state.incidents)
+                is IncidentUiState.Content -> IncidentList(
+                    state.incidents, mutationState, viewModel::resolveDemoIncident,
+                )
                 is IncidentUiState.Error -> Text(
                     text = state.message,
                     color = MaterialTheme.colorScheme.error,
@@ -58,7 +63,11 @@ fun IncidentListScreen(
 }
 
 @Composable
-private fun IncidentList(incidents: List<Incident>) {
+private fun IncidentList(
+    incidents: List<Incident>,
+    mutationState: IncidentMutationUiState,
+    onResolve: () -> Unit,
+) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(vertical = 4.dp),
@@ -84,6 +93,22 @@ private fun IncidentList(incidents: List<Incident>) {
                     text = incident.status.name,
                     style = MaterialTheme.typography.labelMedium,
                 )
+                if (incident.id == IncidentListViewModel.DEMO_INCIDENT_ID) {
+                    Button(
+                        onClick = onResolve,
+                        enabled = mutationState == IncidentMutationUiState.Idle && incident.status == IncidentStatus.OPEN,
+                    ) { Text("Resolve incident") }
+                    when (mutationState) {
+                        IncidentMutationUiState.Idle -> Unit
+                        IncidentMutationUiState.Sending -> Text("Sending change…")
+                        IncidentMutationUiState.ServerConfirmed -> Text("Resolved on server")
+                        is IncidentMutationUiState.Pending -> Text("Pending synchronization")
+                        IncidentMutationUiState.Error -> Text(
+                            "Unable to change incident status.",
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
             }
             HorizontalDivider()
         }

@@ -13,6 +13,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val factory = IncidentListViewModel.factory(
             (application as IncidentApplication).incidentRepository,
+            (application as IncidentApplication).incidentStatusMutator,
         )
         setContent {
             MaterialTheme {
