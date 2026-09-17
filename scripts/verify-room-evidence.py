@@ -41,8 +41,10 @@ def inspect_snapshot(archive, expected):
             if [row[0] for row in integrity] != ["ok"]:
                 raise ValueError("SQLite integrity check failed")
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version != 1:
-                raise ValueError(f"Expected Room schema version 1, found {version}")
+            if version != 2:
+                raise ValueError(f"Expected Room schema version 2, found {version}")
+            if connection.execute("SELECT COUNT(*) FROM pending_mutations").fetchone()[0] != 0:
+                raise ValueError("The preserved HTTP-list proof must not contain a pending mutation")
             identity = connection.execute("SELECT identity_hash FROM room_master_table WHERE id=42").fetchone()
             if identity is None or not identity[0]:
                 raise ValueError("Missing Room identity hash")

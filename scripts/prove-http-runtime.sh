@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-evidence=runtime-evidence
+evidence=${EVIDENCE_DIRECTORY:-runtime-evidence}
 mkdir -p "$evidence"
 python3 scripts/incident-fixture.py --requests "$evidence/fixture-requests.jsonl" \
   > "$evidence/fixture-server.log" 2>&1 &
