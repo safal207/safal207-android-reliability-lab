@@ -7,6 +7,7 @@ sealed interface MutationResult {
     data class Pending(val mutationId: String) : MutationResult
 }
 
-fun interface IncidentStatusMutator {
+interface IncidentStatusMutator {
     suspend fun changeStatus(incidentId: String, targetStatus: IncidentStatus): MutationResult
+    suspend fun replay(actionId: String): MutationResult
 }

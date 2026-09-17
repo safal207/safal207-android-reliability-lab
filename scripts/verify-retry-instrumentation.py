@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail unless every Bead 004 vector and the additive migration actually passed."""
+"""Fail unless every Bead 005 vector and the additive migration actually passed."""
 
 import argparse
 import hashlib
@@ -10,16 +10,16 @@ import subprocess
 from collections import Counter
 from pathlib import Path
 
-TEST_CLASS = "com.safal207.androidreliabilitylab.data.OfflineMutationTest"
+TEST_CLASS = "com.safal207.androidreliabilitylab.data.RetrySafetyTest"
 EXPECTED = {
-    "onlineMutationConfirmsWithoutPendingOrReplay",
-    "transportFailureQueuesOneIntentWithoutReplay",
-    "pendingIntentSurvivesCloseAndFreshReopen",
-    "http500MutationIsErrorWithoutQueueOrLocalChange",
-    "http400MutationIsErrorWithoutQueueOrLocalChange",
-    "http503RetryAfterZeroDoesNotReplayMutation",
-    "failedPendingWriteRollsBackWithoutPublishingPending",
-    "versionOneMigrationPreservesIncidentRows",
+    "vectorAOnlineSuccessStoresMatchingReceipt",
+    "vectorBAppliedThenLostResponseKeepsSamePendingIdentity",
+    "vectorCExplicitReplayReturnsSameReceiptWithoutSecondEffect",
+    "vectorDSameIdentityDifferentPayloadIs409WithoutCorruption",
+    "vectorEMismatchedReceiptNeverClearsPendingOrConfirms",
+    "vectorFFailedReceiptTransactionRollsBackAndRetainsDurablePending",
+    "vectorGReceiptSurvivesFileBackedCloseAndFreshReopen",
+    "versionTwoMigrationPreservesPendingWithoutReplay",
 }
 
 
@@ -52,7 +52,7 @@ def main():
     parser.add_argument("directory", type=Path)
     parser.add_argument("--test-apk", type=Path, required=True)
     args = parser.parse_args()
-    output = (args.directory / "mutation-instrumentation.txt").read_bytes()
+    output = (args.directory / "retry-instrumentation.txt").read_bytes()
     passed = verify(output.decode())
     receipt = {
         "proof_commit_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
@@ -60,9 +60,9 @@ def main():
         "test_class": TEST_CLASS, "passed": passed, "failed": [], "skipped": [],
         "runner_output_sha256": hashlib.sha256(output).hexdigest(),
         "test_apk_sha256": hashlib.sha256(args.test_apk.read_bytes()).hexdigest(),
-        "claim_ceiling": "Online success, transport-only durable queueing, close/reopen, HTTP 400/500/503 error without retransmission, atomic write failure, additive v1-v2-v3 migration; bounded no-replay observation only.",
+        "claim_ceiling": "Vectors A-G against an independent durable test fixture, explicit replay only, additive v2-v3 migration. No production backend, process recovery, background retry or concurrent conflict claim.",
     }
-    (args.directory / "mutation-instrumentation-results.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    (args.directory / "retry-instrumentation-results.json").write_text(json.dumps(receipt, indent=2) + "\n")
     print(json.dumps(receipt, indent=2))
 
 

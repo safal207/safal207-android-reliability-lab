@@ -78,8 +78,8 @@ def mutation_request(directory):
         "PUT", "/incidents/INC-API-001/status", None, "transport-disconnect-before-response", False,
     ):
         raise ValueError(f"Not the expected transport failure: {request}")
-    if request["body"] != {"status": "RESOLVED"} or request["idempotency_key"] is not None:
-        raise ValueError("Unexpected mutation DTO or server idempotency key")
+    if request["body"] != {"status": "RESOLVED"} or not request["idempotency_key"]:
+        raise ValueError("Missing stable identity or unexpected mutation DTO")
     if not request.get("user_agent", "").startswith("okhttp/"):
         raise ValueError("Mutation attempt is not from the Android HTTP client")
     return request
@@ -129,8 +129,10 @@ def inspect_snapshot(directory, expected):
             if [row[0] for row in connection.execute("PRAGMA integrity_check")] != ["ok"]:
                 raise ValueError("SQLite integrity failure")
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version != 2:
-                raise ValueError(f"Expected schema version 2, found {version}")
+            if version != 3:
+                raise ValueError(f"Expected schema version 3, found {version}")
+            if connection.execute("SELECT COUNT(*) FROM mutation_receipts").fetchone()[0] != 0:
+                raise ValueError("An unconfirmed transport failure must not create a receipt")
             identity = connection.execute("SELECT identity_hash FROM room_master_table WHERE id=42").fetchone()[0]
             incidents = [dict(row) for row in connection.execute("SELECT id, title, status FROM incidents ORDER BY id")]
             pending = [dict(row) for row in connection.execute("SELECT mutationId, incidentId, targetStatus, createdOrder FROM pending_mutations ORDER BY createdOrder, mutationId")]
@@ -170,6 +172,13 @@ def verify(directory):
         if incident["id"] == "INC-API-001":
             incident["status"] = "RESOLVED"
     rows, hashes = inspect_snapshot(directory, expected)
+    if rows["pending_mutations"][0]["mutationId"] != request["idempotency_key"]:
+        raise ValueError("Pending identity differs from the first HTTP action identity")
+    with sqlite3.connect(f"file:{directory / 'fixture-ledger.sqlite'}?mode=ro", uri=True) as ledger:
+        if ledger.execute("SELECT COUNT(*) FROM effects").fetchone()[0] != 0:
+            raise ValueError("Bead 004 pre-effect disconnect unexpectedly applied a server effect")
+        if ledger.execute("SELECT COUNT(*) FROM attempts").fetchone()[0] != 1:
+            raise ValueError("Bead 004 ledger does not contain exactly one attempt")
     initial_rows = json.loads((directory.parent / "room-rows.json").read_text())
     if rows["room_identity_hash"] != initial_rows["room_identity_hash"]:
         raise ValueError("Room identity changed during mutation")
@@ -199,7 +208,7 @@ def verify(directory):
         "rows_sha256": digest(directory / "pending-rows.json"),
         "prior_room_receipt_sha256": digest(directory.parent / "room-receipt.json"),
         "evidence_sha256": {name: digest(directory / name) for name in (
-            "before/receipt.json", "action.json", "no-replay.json", "mutation-requests.jsonl", "pending-incident.png", "pending-window.xml",
+            "fixture-ledger.sqlite", "before/receipt.json", "action.json", "no-replay.json", "mutation-requests.jsonl", "pending-incident.png", "pending-window.xml",
         )},
         "no_replay_observation_seconds": observation["duration_seconds"],
         "inspection": "run-as app-owned database plus WAL after force-stop; independent host SQLite on a disposable copy",

@@ -50,7 +50,7 @@ fun IncidentListScreen(
                 )
 
                 is IncidentUiState.Content -> IncidentList(
-                    state.incidents, mutationState, viewModel::resolveDemoIncident,
+                    state.incidents, mutationState, viewModel::resolveDemoIncident, viewModel::retryPendingIncident,
                 )
                 is IncidentUiState.Error -> Text(
                     text = state.message,
@@ -67,6 +67,7 @@ private fun IncidentList(
     incidents: List<Incident>,
     mutationState: IncidentMutationUiState,
     onResolve: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -94,15 +95,20 @@ private fun IncidentList(
                     style = MaterialTheme.typography.labelMedium,
                 )
                 if (incident.id == IncidentListViewModel.DEMO_INCIDENT_ID) {
+                    val pending = mutationState is IncidentMutationUiState.Pending || mutationState is IncidentMutationUiState.RetryError
                     Button(
-                        onClick = onResolve,
-                        enabled = mutationState == IncidentMutationUiState.Idle && incident.status == IncidentStatus.OPEN,
-                    ) { Text("Resolve incident") }
+                        onClick = if (pending) onRetry else onResolve,
+                        enabled = pending || (mutationState == IncidentMutationUiState.Idle && incident.status == IncidentStatus.OPEN),
+                    ) { Text(if (pending) "Retry pending change" else "Resolve incident") }
                     when (mutationState) {
                         IncidentMutationUiState.Idle -> Unit
                         IncidentMutationUiState.Sending -> Text("Sending change…")
                         IncidentMutationUiState.ServerConfirmed -> Text("Resolved on server")
                         is IncidentMutationUiState.Pending -> Text("Pending synchronization")
+                        is IncidentMutationUiState.RetryError -> Text(
+                            "Change is still pending. Confirmation failed.",
+                            color = MaterialTheme.colorScheme.error,
+                        )
                         IncidentMutationUiState.Error -> Text(
                             "Unable to change incident status.",
                             color = MaterialTheme.colorScheme.error,
