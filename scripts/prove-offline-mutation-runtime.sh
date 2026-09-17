@@ -12,7 +12,7 @@ EVIDENCE_DIRECTORY="$evidence/before" bash scripts/prove-http-runtime.sh
 
 printf 'disconnect\n' > "$evidence/mutation-mode.txt"
 python3 scripts/mutation-fixture.py --requests "$evidence/mutation-requests.jsonl" \
-  --mode-file "$evidence/mutation-mode.txt" > "$evidence/mutation-server.log" 2>&1 &
+  --mode-file "$evidence/mutation-mode.txt" --ledger "$evidence/fixture-ledger.sqlite" > "$evidence/mutation-server.log" 2>&1 &
 fixture_pid=$!
 finish() {
   local result=$?

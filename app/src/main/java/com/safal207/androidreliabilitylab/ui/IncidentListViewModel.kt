@@ -29,6 +29,7 @@ sealed interface IncidentMutationUiState {
     data object Sending : IncidentMutationUiState
     data object ServerConfirmed : IncidentMutationUiState
     data class Pending(val mutationId: String) : IncidentMutationUiState
+    data class RetryError(val mutationId: String) : IncidentMutationUiState
     data object Error : IncidentMutationUiState
 }
 
@@ -60,10 +61,29 @@ class IncidentListViewModel(
         val loaded = _uiState.value as? IncidentUiState.Content ?: return
         if (_mutationState.value != IncidentMutationUiState.Idle) return
         if (loaded.incidents.none { it.id == DEMO_INCIDENT_ID && it.status == IncidentStatus.OPEN }) return
+        performMutation(loaded) { mutator.changeStatus(DEMO_INCIDENT_ID, IncidentStatus.RESOLVED) }
+    }
+
+    fun retryPendingIncident() {
+        val mutator = mutations ?: return
+        val loaded = _uiState.value as? IncidentUiState.Content ?: return
+        val actionId = when (val state = _mutationState.value) {
+            is IncidentMutationUiState.Pending -> state.mutationId
+            is IncidentMutationUiState.RetryError -> state.mutationId
+            else -> return
+        }
+        performMutation(loaded, actionId) { mutator.replay(actionId) }
+    }
+
+    private fun performMutation(
+        loaded: IncidentUiState.Content,
+        replayId: String? = null,
+        action: suspend () -> MutationResult,
+    ) {
         _mutationState.value = IncidentMutationUiState.Sending
         viewModelScope.launch {
             try {
-                val result = mutator.changeStatus(DEMO_INCIDENT_ID, IncidentStatus.RESOLVED)
+                val result = action()
                 _uiState.value = IncidentUiState.Content(loaded.incidents.map {
                     if (it.id == DEMO_INCIDENT_ID) it.copy(status = IncidentStatus.RESOLVED) else it
                 })
@@ -76,7 +96,7 @@ class IncidentListViewModel(
             } catch (failure: Exception) {
                 Logger.getLogger(IncidentListViewModel::class.java.name)
                     .log(Level.WARNING, "Incident mutation failed", failure)
-                _mutationState.value = IncidentMutationUiState.Error
+                _mutationState.value = replayId?.let { IncidentMutationUiState.RetryError(it) } ?: IncidentMutationUiState.Error
             }
         }
     }

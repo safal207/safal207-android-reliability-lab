@@ -100,10 +100,11 @@ class OfflineMutationTest {
     @Test
     fun onlineMutationConfirmsWithoutPendingOrReplay() = runTest(dispatcher) {
         val viewModel = loadedViewModel()
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.enqueue(receiptResponse())
         assertMutationStates(viewModel, IncidentMutationUiState.ServerConfirmed)
         assertResolved(viewModel)
         assertTrue(database.pendingMutationDao().readAll().isEmpty())
+        assertEquals(listOf(receipt.toEntity()), database.pendingMutationDao().readReceipts())
         assertMutationRequest()
         observeNoReplay()
     }
@@ -118,7 +119,7 @@ class OfflineMutationTest {
         assertMutationRequest()
         // If anything replays after the failure, it receives a success response and
         // changes the request count/state. This test never asks the app to replay.
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.enqueue(receiptResponse())
         observeNoReplay()
         assertEquals(IncidentMutationUiState.Pending(pending.mutationId), viewModel.mutationState.value)
         assertEquals(listOf(pending), database.pendingMutationDao().readAll())
@@ -191,7 +192,8 @@ class OfflineMutationTest {
         database = IncidentDatabase.open(context, databaseName)
         assertEquals(expected, readRows())
         assertTrue(database.pendingMutationDao().readAll().isEmpty())
-        assertEquals(2, database.openHelper.readableDatabase.version)
+        assertEquals(3, database.openHelper.readableDatabase.version)
+        assertTrue(database.pendingMutationDao().readReceipts().isEmpty())
         database.pendingMutationDao().queue(pending.incidentId, pending.targetStatus, pending.mutationId)
         assertEquals(listOf(pending), database.pendingMutationDao().readAll())
         assertEquals(resolvedIncidents(), readRows())
@@ -202,7 +204,7 @@ class OfflineMutationTest {
         val viewModel = loadedViewModel()
         server.enqueue(MockResponse().setResponseCode(code).setHeader("Retry-After", "0")
             .setBody("server rejected mutation"))
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.enqueue(receiptResponse())
         assertMutationStates(viewModel, IncidentMutationUiState.Error)
         assertEquals(IncidentUiState.Content(expected), viewModel.uiState.value)
         assertEquals(expected, readRows())
@@ -248,6 +250,11 @@ class OfflineMutationTest {
 
     private suspend fun readRows() = database.incidentDao().readAll().map { it.toDomain() }
 
+    private val receipt = MutationReceipt("local-test-001", "INC-API-001", "RESOLVED", "effect-1", 1, 1)
+
+    private fun receiptResponse() = MockResponse().setResponseCode(200)
+        .setHeader("Content-Type", "application/json").setBody(com.google.gson.Gson().toJson(receipt))
+
     private fun enqueueList() {
         server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody(fixture))
     }
@@ -262,7 +269,7 @@ class OfflineMutationTest {
         val request = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
         assertEquals("PUT", request.method)
         assertEquals("/incidents/INC-API-001/status", request.path)
-        assertNull(request.getHeader("Idempotency-Key"))
+        assertEquals(pending.mutationId, request.getHeader("Idempotency-Key"))
         val body = JsonParser.parseString(request.body.readUtf8()).asJsonObject
         assertEquals(setOf("status"), body.keySet())
         assertEquals("RESOLVED", body.get("status").asString)

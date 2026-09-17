@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [IncidentEntity::class, PendingMutationEntity::class], version = 2, exportSchema = false)
+@Database(entities = [IncidentEntity::class, PendingMutationEntity::class, MutationReceiptEntity::class], version = 3, exportSchema = false)
 abstract class IncidentDatabase : RoomDatabase() {
     abstract fun incidentDao(): IncidentDao
     abstract fun pendingMutationDao(): PendingMutationDao
@@ -26,9 +26,22 @@ abstract class IncidentDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""CREATE TABLE IF NOT EXISTS mutation_receipts (
+                    actionId TEXT NOT NULL PRIMARY KEY,
+                    incidentId TEXT NOT NULL,
+                    targetStatus TEXT NOT NULL,
+                    effectId TEXT NOT NULL,
+                    receiptVersion INTEGER NOT NULL,
+                    effectSequence INTEGER NOT NULL
+                )""".trimIndent())
+            }
+        }
+
         fun open(context: Context, name: String = FILE_NAME): IncidentDatabase =
             Room.databaseBuilder(context.applicationContext, IncidentDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

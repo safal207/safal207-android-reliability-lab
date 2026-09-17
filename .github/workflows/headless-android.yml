@@ -20,6 +20,9 @@ jobs:
       - name: Build reproducible Android image
         run: docker build --pull -t android-reliability-lab-headless .
 
+      - name: Verify deterministic mutation fixture
+        run: python3 scripts/test-mutation-fixture.py
+
       - name: Emit SDK environment evidence
         run: |
           docker run --rm android-reliability-lab-headless bash -lc '
@@ -108,7 +111,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash scripts/prove-offline-mutation-runtime.sh
+          script: bash scripts/prove-retry-safety-runtime.sh
 
       - name: Upload runtime proof
         if: always()
