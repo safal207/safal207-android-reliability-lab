@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "AndroidReliabilityLab"
 include(":app")
+
+include(":robys")

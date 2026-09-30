@@ -6,6 +6,10 @@ A small Android portfolio project focused on one question:
 
 This repository is intentionally built as a sequence of small, independently verifiable reliability beads rather than as a large demo app.
 
+## Roby's Coffee House demo
+
+The independent [`:robys` app](robys/README.md) uses this repository's existing headless Android toolchain. It adds a native coffee-house demo and a browser link to the existing Taste Journey; it does not inherit the incident app's reliability claims. Build, test APK and API 35 UI evidence are produced by the dedicated Roby's workflow.
+
 ## Status
 
 **Bead 000 — Headless Android environment:** **PASS.** A clean GitHub Actions runner provisions JDK + Android command-line tooling without Android Studio and proves the SDK/toolchain boundary.
