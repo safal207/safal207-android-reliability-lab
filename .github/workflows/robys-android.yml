@@ -45,7 +45,7 @@ jobs:
               'proof_commit_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
               'pull_request_head_sha': os.environ['PR_HEAD_SHA'],
               'workflow_run_id': os.environ['GITHUB_RUN_ID'],
-              'java_version': 17, 'compile_sdk': 35, 'build_tools': '35.0.0',
+              'java_version': 17, 'compile_sdk': 35, 'installed_build_tools': '35.0.0',
               'commands': ['./gradlew --no-daemon test lint assembleDebug', './gradlew --no-daemon :robys:assembleDebugAndroidTest'],
               'apk_sha256': hashlib.sha256(apks[0][0].read_bytes()).hexdigest(),
               'test_apk_sha256': hashlib.sha256(apks[1][0].read_bytes()).hexdigest(),

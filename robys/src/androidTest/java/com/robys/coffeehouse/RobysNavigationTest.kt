@@ -79,6 +79,8 @@ class RobysNavigationTest {
     fun selectedTabAndCategorySurviveActivityRecreation() {
         tab("Keşfet").performClick()
         selectDessert()
+        tab("Ana Sayfa").performClick()
+        tab("Keşfet").performClick()
 
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
