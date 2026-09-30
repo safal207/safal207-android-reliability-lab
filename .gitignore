@@ -7,3 +7,4 @@ robys-build-evidence/
 robys-runtime-evidence/
 robys-runtime-apk/
 robys-instrumentation-apk/
+.kotlin/

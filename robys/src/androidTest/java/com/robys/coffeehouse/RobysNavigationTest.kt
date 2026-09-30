@@ -14,7 +14,6 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -145,7 +144,14 @@ class RobysNavigationTest {
         }
     }
 
-    private fun tab(label: String) = compose.onNodeWithContentDescription(label)
+    private fun tab(label: String) = compose.onNodeWithTag(
+        when (label) {
+            "Ana Sayfa" -> "tab_HOME"
+            "Keşfet" -> "tab_MENU"
+            "Ziyaret" -> "tab_VISIT"
+            else -> error("Unknown tab: $label")
+        }
+    )
 
     private fun selectDessert() {
         compose.onNodeWithTag("discoverScroll").performScrollToNode(hasText("Tatlı"))

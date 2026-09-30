@@ -112,6 +112,7 @@ private fun RobysApp() {
             NavigationBar(containerColor = Espresso, tonalElevation = 0.dp) {
                 AppScreen.entries.forEach { screen ->
                     NavigationBarItem(
+                        modifier = Modifier.testTag("tab_${screen.name}"),
                         selected = selectedScreen == screen,
                         onClick = { selectedScreen = screen },
                         icon = {

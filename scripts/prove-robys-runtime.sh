@@ -96,10 +96,6 @@ timeout 240 adb shell am instrument -w -r \
   "$package.test/androidx.test.runner.AndroidJUnitRunner" \
   | tee "$evidence/instrumentation.txt"
 
-for screen in home discover visit visit-landscape-last-action; do
-  adb pull "/sdcard/Android/data/$package/files/runtime-evidence/$screen.png" "$evidence/$screen.png"
-  test -s "$evidence/$screen.png"
-done
 adb logcat -d -t 1000 > "$evidence/logcat.txt"
 
 python3 - "$evidence" <<'PY'
@@ -132,6 +128,14 @@ for line in output.splitlines():
 assert Counter(completed) == Counter(expected), f'Missing/extra/duplicate tests: {completed}'
 assert re.search(r'^OK \(5 tests\)\s*$', output, re.MULTILINE), 'No successful five-test summary'
 assert re.search(r'^INSTRUMENTATION_CODE: -1\s*$', output, re.MULTILINE), 'Runner did not complete'
+# Validate runner output before fetching screenshots so a missing image cannot
+# obscure the original test failure. Every required image still gates success.
+for screen in ('home', 'discover', 'visit', 'visit-landscape-last-action'):
+    subprocess.run([
+        'adb', 'pull',
+        f'/sdcard/Android/data/com.robys.coffeehouse/files/runtime-evidence/{screen}.png',
+        str(evidence / f'{screen}.png'),
+    ], check=True)
 for name in ('cold-home.png', 'home.png', 'discover.png', 'visit.png', 'visit-landscape-last-action.png'):
     assert (evidence / name).read_bytes().startswith(b'\x89PNG\r\n\x1a\n'), f'Invalid screenshot: {name}'
 receipt = {
