@@ -255,7 +255,7 @@ private fun DiscoverScreen(padding: PaddingValues, category: MenuCategory, onCat
             Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
                 Text("ROBY'S TASTE JOURNEY", color = EspressoSoft, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.7.sp)
                 Spacer(Modifier.height(8.dp))
-                Text("Kendi tadını keşfet.", color = Espresso, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                Text("Kendi tadını keşfet.", color = Espresso, fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
                 Text("Bugün tek bir iyi eşleşme. Yarın başka bir tat. Baskı yok, sadece merak.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
                 Spacer(Modifier.height(18.dp))
@@ -310,7 +310,7 @@ private fun VisitScreen(padding: PaddingValues) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).testTag("visitScroll").padding(horizontal = 20.dp, vertical = 24.dp)) {
         Text("BİZE UĞRAYIN", color = EspressoSoft, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.7.sp)
-        Spacer(Modifier.height(8.dp)); Text("Sıradaki kahveniz", color = Espresso, fontSize = 32.sp, fontWeight = FontWeight.Bold); Text("burada bekliyor.", color = Espresso, fontSize = 32.sp, fontWeight = FontWeight.Light)
+        Spacer(Modifier.height(8.dp)); Text("Sıradaki kahveniz", color = Espresso, fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold); Text("burada bekliyor.", color = Espresso, fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Light)
         Spacer(Modifier.height(26.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Espresso), shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.padding(22.dp)) {
